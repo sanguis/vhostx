@@ -28,8 +28,8 @@
 #
  NGINX_CONFIG_PORTS="ports.conf"
  NGINX_CONFIG_FILENAME="nginx.conf"
- NGINX_CONFIG="/etc/nginx/"
- APACHECTL="/usr/sbin/apache2ctl"
+ N:GINX_CONFIG="/etc/nginx/"
+ :NGINX_BIN="/etc/init.d/nginx"
 #
 # Set the virtual host configuration directory
  NGINX_VIRTUAL_HOSTS_ENABLED="sites-enabled"
@@ -41,7 +41,7 @@
 # don't want to be nagged about "fixing" your DocumentRoot?  Set this to "yes".
  SKIP_DOCUMENT_ROOT_CHECK="yes"
 #
-# If Apache works on a different port than the default 80, set it here
+# If Nginx works on a different port than the default 80, set it here
  NGINX_PORT="80"
 #
 # Set the errorlog for the VirtualHost
@@ -165,9 +165,8 @@ if [ ! -z $DELETE ]; then
                 rm $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
                 echo "done"
 
-                echo -n "+ Restarting Apache... "
-                ## /usr/sbin/apachectl graceful 1>/dev/null 2>/dev/null
-                $APACHECTL graceful 1>/dev/null 2>/dev/null
+                echo -n "+ Restarting Nginx... "
+                $NGINX_BIN restart
                 echo "done"
         fi
     else
@@ -473,8 +472,8 @@ __EOF
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Restart apache for the changes to take effect
     #
-    echo -n "+ Restarting Apache... "
-    $APACHECTL graceful 1>/dev/null 2>/dev/null
+    echo -n "+ Restarting Nginx "
+    $NGINX_BIN restart
     echo "done"
 
     cat << __EOF
