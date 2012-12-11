@@ -24,12 +24,12 @@
 #
 #DOC_ROOT_PREFIX="/var/www"
 #
-# Configure the apache-related paths if these defaults do not work for you.
+# Configure the nginx-related paths if these defaults do not work for you.
 #
  NGINX_CONFIG_PORTS="ports.conf"
  NGINX_CONFIG_FILENAME="nginx.conf"
- N:GINX_CONFIG="/etc/nginx/"
- :NGINX_BIN="/etc/init.d/nginx"
+ NGINX_CONFIG="/etc/nginx/"
+ NGINX_BIN="/etc/init.d/nginx"
 #
 # Set the virtual host configuration directory
  NGINX_VIRTUAL_HOSTS_ENABLED="sites-enabled"
@@ -114,7 +114,7 @@ else
             DELETE=0
         fi
     elif [ $1 = "--version" ]; then 
-        echo "Virtualhost.sh version: "$VERSION
+        echo "vhostx version: "$VERSION
         exit 1
     else
         VIRTUALHOST=$1
@@ -161,7 +161,7 @@ if [ ! -z $DELETE ]; then
                 esac
             fi
                 echo -n "  - Deleting virtualhost file... ($NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST) and ($NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST) "
-                /usr/sbin/a2dissite $VIRTUALHOST 1>/dev/null 2>/dev/null
+                rm $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST
                 rm $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
                 echo "done"
 
@@ -405,7 +405,7 @@ if [ $CREATE_INDEX == 'yes']; then
         <div align="left">
         <p>If you are reading this in your web browser, then the only logical conclusion is that the <b><a href="http://$VIRTUALHOST/">http://$VIRTUALHOST/</a></b> virtualhost was setup correctly. :)</p>
 
-        <p>You can find the configuration file for this virtual host in:<br>
+        <p>You can find the configuration file for this virtual host in:<br></p>
         <table class="indent" border="0" cellspacing="3">
         <tr>
         <td><b>$NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST</b></td>
@@ -419,17 +419,7 @@ if [ $CREATE_INDEX == 'yes']; then
         <td><b><a href="file://$DOC_ROOT_PREFIX/$FOLDER">$DOC_ROOT_PREFIX/$FOLDER</b></a></td>
         </tr>
         </table>
-        </p>
 
-        <p>This script is based upon the excellent virtualhost (V1.04) script by Patrick Gibson <patrick@patrickg.com> for OS X. 
-        You can download the original script for OS X from Patrick's website: <b><a href="http://patrickg.com/virtualhost">http://patrickg.com/virtualhost</a></b>
-        </p>
-        <p>
-        For the latest version of this script for Ubuntu go to <b><a href="https://github.com/pgib/vhostx.sh/tree/ubuntu">Github</a></b>!<br/>	
-            The Ubuntu Version is based on Bjorn Wijers script. Visit Bjorn Wijers' website: <br />
-            <b><a href="http://burobjorn.nl">http://burobjorn.nl</a></b><br>
-
-            </p>
             </div>
 
             </div>
@@ -448,23 +438,61 @@ __EOF
     #
     echo -n "+ Creating virtualhost file... "
     cat << __EOF >$NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
-    <VirtualHost *:$NGINX_PORT>
-      DocumentRoot $DOC_ROOT_PREFIX/$FOLDER
-      ServerName $VIRTUALHOST
-      ErrorLog $ERROR_LOG/$VIRTUALHOST-error.log
+  server {
+        server_name $VIRTUALHOST;
+        root $DOC_ROOT_PREFIX/$FOLDER;
+        index index.html index.htm index.php;
 
-      ScriptAlias /cgi-bin $DOC_ROOT_PREFIX/$FOLDER/cgi-bin
+        location = /favicon.ico {
+                log_not_found off;
+                access_log off;
+        }
 
-      <Directory $DOC_ROOT_PREFIX/$FOLDER>
-        Options All
-        AllowOverride All
-      </Directory>
-    </VirtualHost>
+        if (!-e \$request_filename) {
+                rewrite ^/(.*)$ /index.php?q=\$1 last;
+        }
+
+        error_page 404 index.php;
+
+# hide protected files
+        location ~* .(engine|inc|info|install|module|profile|po|sh|.*sql|theme|tpl(.php)?|xtmpl)$|^(code-style.pl|Entries.*|Repository|Root|Tag|Template)$ {
+                deny all;
+        }
+
+# hide backup_migrate files
+        location ~* ^/files/backup_migrate {
+                deny all;
+        }
+# Fighting with ImageCache? This little gem is amazing.
+        location ~ ^/sites/.*/files/imagecache/ {
+                try_files \$uri @rewrite;
+        }
+# Catch image styles for D7 too.
+        location ~ ^/sites/.*/files/styles/ {
+                try_files \$uri @rewrite;
+        }
+# serve static files directly
+        location ~* ^.+.(jpg|jpeg|gif|css|png|js|ico)$ {
+                access_log        off;
+                expires           30d;
+                log_not_found off;
+        }
+
+        location ~ \.php$ {
+                fastcgi_split_path_info ^(.+\.php)(/.+)$;
+#NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+                fastcgi_intercept_errors on;
+                fastcgi_pass unix:/var/run/php5-fpm.sock;
+        }
+}
+    
 __EOF
 
 
     # Enable the virtual host
-    /usr/sbin/a2ensite $VIRTUALHOST 1>/dev/null 2>/dev/null
+    ln -s $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST
 
     echo "done"
 

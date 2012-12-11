@@ -21,6 +21,7 @@ where <site> is the site name you used when you first created the host.
 ## Script variables
 
 If you are using this script on a production machine with a static IP address, and you wish to setup a "live" virtualhost, you can change the following '*' address to the IP address of your machine.
+
 IP_ADDRESS="127.0.0.1"
 
 By default, this script places files in /home/[username]/Sites. If you would like to change this uncomment the following line:
