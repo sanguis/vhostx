@@ -1,49 +1,16 @@
 #!/bin/sh
 
-# Virtualhost.sh
+# vhostx
 #
 # Is a nice little script to setup a new virtualhost in Ubuntu based upon the
 # excellent virtualhost script by Patrick Gibson <patrick@patrickg.com> for OS X.
 #
-# This script has been updated to work on Ubuntu 12.04 (Precise Pangolin) with 
-# Apache2 (version 2.2.22) and probably works on Debian as well, but this has
-# not been tested (yet). Feel free to test it on other Linux distributions.
-# If you encounter any issues feel free to send bugreports & patches 
-# Just send an email to Bjorn Wijers <burobjorn@burobjorn.nl>.
-
-# = CHANGELOG =
-# 
-# 12.04-1
-#    - Fixes: Made the script more compatible with Ubuntu 12.04 LTS
-#    (Precise Pangolin) using the ports.conf file, pinky instead of finger,
-#    checks apache2.conf for include statement of the Ubuntu/Debian standard
-#    'sites-enabled' configuration directory and add it if it's not found.
-#
-#    - New: Added command line parameter '--version' to check for the version
-#    of the script.
-#
-#    - New: Added CREATE_INDEX variable. Set to yes to explicitly create an
-#    index.html file if none was found. By default set to no. So no index.html
-#    will be created from now on.
-#
-#    - New: Added ERROR_LOG variable. Set to /var/log/apache2, but can be easily 
-#    easily changed to set the VirtualHost's errorlog. Uses the following format:
-#    $VIRTUALHOST-error.log
-#
-# = USAGE =
-#
-# 1. Create a VirtualHost:
-# sudo ./virtualhost <name>
-# where <name> is the one-word name you'd like to use. (e.g. mysite.dev)
-#
-# Note that if "virtualhost.sh" is not in your PATH, you will have to write
-# out the full path to where you've placed: eg. /usr/bin/virtualhost.sh <name>
-#
-# 2. Remove a VirtualHost:
-# sudo ./virtualhost --delete <site>
-#
-# where <site> is the site name you used when you first created the host.
-
+# This script has been updated to work on Mint 13 with 
+# Nginx and probably works on Debian as well, but this has
+# not been tested (yet). Feel free to test it on other Linux distributions, and
+# let me know so that I can update the compatibility list in the read me.
+# If you encounter any issues feel free to post bugreports & patches to
+# https://github.com/sanguis/vhostx/issues
 
 # == SCRIPT VARIABLES ==
 #
@@ -59,14 +26,14 @@
 #
 # Configure the apache-related paths if these defaults do not work for you.
 #
- APACHE_CONFIG_PORTS="ports.conf"
- APACHE_CONFIG_FILENAME="apache2.conf"
- APACHE_CONFIG="/etc/apache2"
+ NGINX_CONFIG_PORTS="ports.conf"
+ NGINX_CONFIG_FILENAME="nginx.conf"
+ NGINX_CONFIG="/etc/nginx/"
  APACHECTL="/usr/sbin/apache2ctl"
 #
 # Set the virtual host configuration directory
- APACHE_VIRTUAL_HOSTS_ENABLED="sites-enabled"
- APACHE_VIRTUAL_HOSTS_AVAILABLE="sites-available"
+ NGINX_VIRTUAL_HOSTS_ENABLED="sites-enabled"
+ NGINX_VIRTUAL_HOSTS_AVAILABLE="sites-available"
 #
 # By default, use the site folders that get created will be owned by this group
  OWNER_GROUP="www-data"
@@ -75,10 +42,10 @@
  SKIP_DOCUMENT_ROOT_CHECK="yes"
 #
 # If Apache works on a different port than the default 80, set it here
- APACHE_PORT="80"
+ NGINX_PORT="80"
 #
 # Set the errorlog for the VirtualHost
- ERROR_LOG="/var/log/apache2"
+ ERROR_LOG="/var/log/nginx"
 
 # Set to yes, if you want the script to create an index.html file 
 # NB: If there's no index.html or index.php the script will add one 
@@ -86,7 +53,7 @@
 
 # == DO NOT EDIT BELOW THIS lINE UNLESS YOU KNOW WHAT YOU ARE DOING ==
 # Ubuntu version dash script version. do not change!
-VERSION="12.04-1"
+VERSION=".1"
 
 if [ `whoami` != 'root' ]; then
     echo "You must be running with root privileges to run this script."
@@ -125,12 +92,12 @@ fi
 usage()
 {
     cat << __EOT
-    Usage: sudo virtualhost.sh <name>
-    sudo virtualhost.sh --delete <name>
+    Usage: sudo vhostx.sh <name>
+    sudo vhostx.sh --delete <name>
     where <name> is the one-word name you'd like to use. (e.g. mysite)
 
-    Note that if "virtualhost.sh" is not in your PATH, you will have to write
-    out the full path to it: eg. /Users/$USER/Desktop/virtualhost.sh <name>
+    Note that if "vhostx.sh" is not in your PATH, you will have to write
+    out the full path to it: eg. /Users/$USER/Desktop/vhostx.sh <name>
 
 __EOT
     exit 1
@@ -174,8 +141,8 @@ if [ ! -z $DELETE ]; then
         mv -f /etc/hosts2 /etc/hosts
         echo "done"
 
-        if [ -e $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST ]; then
-            DOCUMENT_ROOT=`grep DocumentRoot $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST | awk '{print $2}'`
+        if [ -e $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST ]; then
+            DOCUMENT_ROOT=`grep DocumentRoot $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST | awk '{print $2}'`
 
             if [ -d $DOCUMENT_ROOT ]; then
                 echo -n "  + Found DocumentRoot $DOCUMENT_ROOT. Delete this folder? [y/N]: "
@@ -193,9 +160,9 @@ if [ ! -z $DELETE ]; then
                         ;;
                 esac
             fi
-                echo -n "  - Deleting virtualhost file... ($APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST) and ($APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST) "
+                echo -n "  - Deleting virtualhost file... ($NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED/$VIRTUALHOST) and ($NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST) "
                 /usr/sbin/a2dissite $VIRTUALHOST 1>/dev/null 2>/dev/null
-                rm $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
+                rm $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
                 echo "done"
 
                 echo -n "+ Restarting Apache... "
@@ -213,7 +180,7 @@ fi
 
 FIRSTNAME=`pinky | awk '{print $2}' | tail -n 1`
 cat << __EOT
-Hi $FIRSTNAME! Welcome to virtualhost.sh. This script will guide you through setting
+Hi $FIRSTNAME! Welcome to vhostx.sh. This script will guide you through setting
 up a name-based virtualhost
 __EOT
 
@@ -227,20 +194,20 @@ esac
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Make sure $APACHE_CONFIG/$APACHE_CONFIG_FILENAME is ready for virtual hosting...
+# Make sure $NGINX_CONFIG/$NGINX_CONFIG_FILENAME is ready for virtual hosting...
 #
 # If it's not, we will:
 #
-# a) Backup the original to $APACHE_CONFIG/$APACHE_CONFIG_FILENAME.original
+# a) Backup the original to $NGINX_CONFIG/$NGINX_CONFIG_FILENAME.original
 # b) Add a NameVirtualHost 127.0.0.1 line
-# c) Create $APACHE_CONFIG/virtualhosts/ (virtualhost definition files reside here)
-# d) Add a line to include all files in $APACHE_CONFIG/virtualhosts/
+# c) Create $NGINX_CONFIG/virtualhosts/ (virtualhost definition files reside here)
+# d) Add a line to include all files in $NGINX_CONFIG/virtualhosts/
 # e) Create a _localhost file for the default "localhost" virtualhost
 #
 
 if [ $SKIP_DOCUMENT_ROOT_CHECK  != 'yes' ]; then
-    if ! grep -q -e "^DocumentRoot \"$DOC_ROOT_PREFIX\"" $APACHE_CONFIG/$APACHE_CONFIG_FILENAME ; then
-        echo "The DocumentRoot in $APACHE_CONFIG_FILENAME does not point where it should."
+    if ! grep -q -e "^DocumentRoot \"$DOC_ROOT_PREFIX\"" $NGINX_CONFIG/$NGINX_CONFIG_FILENAME ; then
+        echo "The DocumentRoot in $NGINX_CONFIG_FILENAME does not point where it should."
         echo -n "Do you want to set it to $DOC_ROOT_PREFIX? [Y/n]: "
         read DOCUMENT_ROOT
         case $DOCUMENT_ROOT in
@@ -248,7 +215,7 @@ if [ $SKIP_DOCUMENT_ROOT_CHECK  != 'yes' ]; then
                 echo "Okay, just re-run this script if you change your mind."
                 ;;
             *)
-                cat << __EOT | ed $APACHE_CONFIG/$APACHE_CONFIG_FILENAME 1>/dev/null 2>/dev/null
+                cat << __EOT | ed $NGINX_CONFIG/$NGINX_CONFIG_FILENAME 1>/dev/null 2>/dev/null
                 /^DocumentRoot
                 i
                 #
@@ -267,16 +234,16 @@ __EOT
 fi
 
 
-if ! grep -q -E "^NameVirtualHost \*:$APACHE_PORT" $APACHE_CONFIG/$APACHE_CONFIG_PORTS ; then
+if ! grep -q -E "^NameVirtualHost \*:$NGINX_PORT" $NGINX_CONFIG/$NGINX_CONFIG_PORTS ; then
 
-    echo "$APACHE_CONFIG_PORTS not ready for virtual hosting. Fixing..."
-    cp $APACHE_CONFIG/$APACHE_CONFIG_PORTS $APACHE_CONFIG/$APACHE_CONFIG_PORTS.original
-    echo "NameVirtualHost *:$APACHE_PORT" >> $APACHE_CONFIG/$APACHE_CONFIG_PORTS
+    echo "$NGINX_CONFIG_PORTS not ready for virtual hosting. Fixing..."
+    cp $NGINX_CONFIG/$NGINX_CONFIG_PORTS $NGINX_CONFIG/$NGINX_CONFIG_PORTS.original
+    echo "NameVirtualHost *:$NGINX_PORT" >> $NGINX_CONFIG/$NGINX_CONFIG_PORTS
 
-    if [ ! -d $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE ]; then
-        mkdir $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE
-        cat << __EOT > $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE/_localhost
-        <VirtualHost *:$APACHE_PORT>
+    if [ ! -d $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE ]; then
+        mkdir $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE
+        cat << __EOT > $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/_localhost
+        <VirtualHost *:$NGINX_PORT>
         DocumentRoot $DOC_ROOT_PREFIX
         ServerName localhost
 
@@ -288,14 +255,14 @@ if ! grep -q -E "^NameVirtualHost \*:$APACHE_PORT" $APACHE_CONFIG/$APACHE_CONFIG
         </Directory>
         </VirtualHost>
 __EOT
-        if [ ! -d $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED ]; then
-            mkdir $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED
+        if [ ! -d $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED ]; then
+            mkdir $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED
         fi
     fi
 
-    if ! grep -q -E "^Include $APACHE_VIRTUAL_HOSTS_ENABLED" $APACHE_CONFIG/$APACHE_CONFIG_FILENAME ; then
-        cp $APACHE_CONFIG/$APACHE_CONFIG_FILENAME $APACHE_CONFIG/$APACHE_CONFIG_FILENAME.original
-        echo "Include $APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_ENABLED"  >> $APACHE_CONFIG/$APACHE_CONFIG_FILENAME
+    if ! grep -q -E "^Include $NGINX_VIRTUAL_HOSTS_ENABLED" $NGINX_CONFIG/$NGINX_CONFIG_FILENAME ; then
+        cp $NGINX_CONFIG/$NGINX_CONFIG_FILENAME $NGINX_CONFIG/$NGINX_CONFIG_FILENAME.original
+        echo "Include $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED"  >> $NGINX_CONFIG/$NGINX_CONFIG_FILENAME
     fi
 fi
 
@@ -442,7 +409,7 @@ if [ $CREATE_INDEX == 'yes']; then
         <p>You can find the configuration file for this virtual host in:<br>
         <table class="indent" border="0" cellspacing="3">
         <tr>
-        <td><b>$APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST</b></td>
+        <td><b>$NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST</b></td>
         </tr>
         </table>
         </p>
@@ -459,7 +426,7 @@ if [ $CREATE_INDEX == 'yes']; then
         You can download the original script for OS X from Patrick's website: <b><a href="http://patrickg.com/virtualhost">http://patrickg.com/virtualhost</a></b>
         </p>
         <p>
-        For the latest version of this script for Ubuntu go to <b><a href="https://github.com/pgib/virtualhost.sh/tree/ubuntu">Github</a></b>!<br/>	
+        For the latest version of this script for Ubuntu go to <b><a href="https://github.com/pgib/vhostx.sh/tree/ubuntu">Github</a></b>!<br/>	
             The Ubuntu Version is based on Bjorn Wijers script. Visit Bjorn Wijers' website: <br />
             <b><a href="http://burobjorn.nl">http://burobjorn.nl</a></b><br>
 
@@ -481,8 +448,8 @@ __EOF
     # Create a default virtualhost file
     #
     echo -n "+ Creating virtualhost file... "
-    cat << __EOF >$APACHE_CONFIG/$APACHE_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
-    <VirtualHost *:$APACHE_PORT>
+    cat << __EOF >$NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
+    <VirtualHost *:$NGINX_PORT>
       DocumentRoot $DOC_ROOT_PREFIX/$FOLDER
       ServerName $VIRTUALHOST
       ErrorLog $ERROR_LOG/$VIRTUALHOST-error.log
