@@ -28,7 +28,7 @@
 #
  NGINX_CONFIG_PORTS="ports.conf"
  NGINX_CONFIG_FILENAME="nginx.conf"
- NGINX_CONFIG="/etc/nginx/"
+ NGINX_CONFIG="/etc/nginx"
  NGINX_BIN="/etc/init.d/nginx"
 #
 # Set the virtual host configuration directory
@@ -203,68 +203,9 @@ esac
 # d) Add a line to include all files in $NGINX_CONFIG/virtualhosts/
 # e) Create a _localhost file for the default "localhost" virtualhost
 #
-
-if [ $SKIP_DOCUMENT_ROOT_CHECK  != 'yes' ]; then
-    if ! grep -q -e "^DocumentRoot \"$DOC_ROOT_PREFIX\"" $NGINX_CONFIG/$NGINX_CONFIG_FILENAME ; then
-        echo "The DocumentRoot in $NGINX_CONFIG_FILENAME does not point where it should."
-        echo -n "Do you want to set it to $DOC_ROOT_PREFIX? [Y/n]: "
-        read DOCUMENT_ROOT
-        case $DOCUMENT_ROOT in
-            n*|N*)
-                echo "Okay, just re-run this script if you change your mind."
-                ;;
-            *)
-                cat << __EOT | ed $NGINX_CONFIG/$NGINX_CONFIG_FILENAME 1>/dev/null 2>/dev/null
-                /^DocumentRoot
-                i
-                #
-                .
-                j
-                +
-                i
-                DocumentRoot "$DOC_ROOT_PREFIX"
-                .
-                w
-                q
-__EOT
-                ;;
-        esac
-    fi
-fi
-
-
-if ! grep -q -E "^NameVirtualHost \*:$NGINX_PORT" $NGINX_CONFIG/$NGINX_CONFIG_PORTS ; then
-
-    echo "$NGINX_CONFIG_PORTS not ready for virtual hosting. Fixing..."
-    cp $NGINX_CONFIG/$NGINX_CONFIG_PORTS $NGINX_CONFIG/$NGINX_CONFIG_PORTS.original
-    echo "NameVirtualHost *:$NGINX_PORT" >> $NGINX_CONFIG/$NGINX_CONFIG_PORTS
-
-    if [ ! -d $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE ]; then
-        mkdir $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE
-        cat << __EOT > $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/_localhost
-        <VirtualHost *:$NGINX_PORT>
-        DocumentRoot $DOC_ROOT_PREFIX
-        ServerName localhost
-
-        ScriptAlias /cgi-bin $DOC_ROOT_PREFIX/cgi-bin
-
-        <Directory $DOC_ROOT_PREFIX>
-        Options All
-        AllowOverride All
-        </Directory>
-        </VirtualHost>
-__EOT
         if [ ! -d $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED ]; then
             mkdir $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED
         fi
-    fi
-
-    if ! grep -q -E "^Include $NGINX_VIRTUAL_HOSTS_ENABLED" $NGINX_CONFIG/$NGINX_CONFIG_FILENAME ; then
-        cp $NGINX_CONFIG/$NGINX_CONFIG_FILENAME $NGINX_CONFIG/$NGINX_CONFIG_FILENAME.original
-        echo "Include $NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_ENABLED"  >> $NGINX_CONFIG/$NGINX_CONFIG_FILENAME
-    fi
-fi
-
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # If the virtualhost is not already defined in /etc/hosts, define it...
