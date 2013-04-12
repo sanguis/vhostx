@@ -267,7 +267,7 @@ case $resp in
     n*|N*)
         while : ; do
             if [ -z $FOLDER ]; then
-                echo -n "  - Enter new folder name (located in Sites): "
+                echo -n "  - Enter Full Path for folder: "
                 read FOLDER
             else
                 break
@@ -275,17 +275,15 @@ case $resp in
         done
         ;;
 
-    *) FOLDER=$VIRTUALHOST
+    *) FOLDER=$DOC_ROOT_PREFIX/$VIRTUALHOST
         ;;
 esac
 
 
 # Create the folder if we need to...
-if [ ! -d $DOC_ROOT_PREFIX/$FOLDER ]; then
-    echo -n "  + Creating folder $DOC_ROOT_PREFIX/$FOLDER... "
-    # su $USER -c "mkdir -p $DOC_ROOT_PREFIX/$FOLDER"
-    mkdir -p $DOC_ROOT_PREFIX/$FOLDER
-
+if [ ! -d $FOLDER ]; then
+    echo -n "  + Creating folder $FOLDER... "
+    su $USER -c "mkdir -p $FOLDER"
     # If $FOLDER is deeper than one level, we need to fix permissions properly
     case $FOLDER in
         */*)
@@ -323,9 +321,9 @@ fi
 # Create a default index.html if there isn't already one there
 #
 if [ $CREATE_INDEX == 'yes']; then
-    if [ ! -e $DOC_ROOT_PREFIX/$FOLDER/index.html -a ! -e $DOC_ROOT_PREFIX/$FOLDER/index.php ]; then
+    if [ ! -e $FOLDER/index.html -a ! -e $FOLDER/index.php ]; then
 
-        cat << __EOF >$DOC_ROOT_PREFIX/$FOLDER/index.html
+        cat << __EOF >$FOLDER/index.html
         <html>
         <head>
         <title>Welcome to $VIRTUALHOST</title>
@@ -381,7 +379,7 @@ __EOF
     cat << __EOF >$NGINX_CONFIG/$NGINX_VIRTUAL_HOSTS_AVAILABLE/$VIRTUALHOST
   server {
         server_name $VIRTUALHOST;
-        root $DOC_ROOT_PREFIX/$FOLDER;
+        root $FOLDER;
         index index.html index.htm index.php;
 
         location = /favicon.ico {
