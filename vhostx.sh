@@ -381,6 +381,10 @@ __EOF
         server_name $VIRTUALHOST;
         root $FOLDER;
         index index.html index.htm index.php;
+        location = / {
+          error_page 404 index.php;
+        }
+
 
         location = /favicon.ico {
                 log_not_found off;
@@ -391,7 +395,6 @@ __EOF
                 rewrite ^/(.*)$ /index.php?q=\$1 last;
         }
 
-        error_page 404 index.php;
 
 # hide protected files
         location ~* .(engine|inc|info|install|module|profile|po|sh|.*sql|theme|tpl(.php)?|xtmpl)$|^(code-style.pl|Entries.*|Repository|Root|Tag|Template)$ {
