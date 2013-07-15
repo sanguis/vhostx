@@ -419,6 +419,10 @@ __EOF
                 expires           30d;
                 log_not_found off;
         }
+#set variable for max client size and define upload_max_file_size all at once
+        set upload_size 10M;
+
+        client_max_body_size @upload_size;
 
         location ~ \.php$ {
                 fastcgi_split_path_info ^(.+\.php)(/.+)$;
@@ -427,6 +431,7 @@ __EOF
                 fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
                 fastcgi_intercept_errors on;
                 fastcgi_pass unix:/var/run/php5-fpm.sock;
+                fastcgi_param MAX_FILE_SIZE @upload_size;
         }
 }
     
