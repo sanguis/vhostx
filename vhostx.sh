@@ -424,7 +424,8 @@ __EOF
 
         client_max_body_size @upload_size;
 
-        location ~ \.php$ {
+ #parses php in any dire except for the public files dir 
+        location ~* ^((?!/sites/default/files/).+\.php)$ {
                 fastcgi_split_path_info ^(.+\.php)(/.+)$;
 #NOTE: You should have "cgi.fix_pathinfo = 0;" in php.ini
                 include fastcgi_params;
